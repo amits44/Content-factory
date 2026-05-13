@@ -1,0 +1,6 @@
+langchain_community==0.4.1
+langchain_core==1.3.3
+langchain_groq==1.1.2
+python-dotenv==1.2.2
+gtts
+moviepy

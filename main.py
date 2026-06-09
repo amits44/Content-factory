@@ -1,34 +1,46 @@
-import os
-from dotenv import load_dotenv
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from pydantic import BaseModel
+import uuid
+import json
+from graph import run_pipeline
 
-from agents.research_agent import generate_research
-from agents.script_agent import generate_script
-from services.voice_service import generate_voice
-from services.pexels import fetch_video
-from services.video_editor import create_reel
+app = FastAPI(title="Content Factory API")
 
-load_dotenv()
+jobs = {}
 
-TOPIC = "AI is replacing marketers"
+class PipelineRequest(BaseModel):
+    niche:str
 
-print("\nGenerating research...")
+class JobStatus(BaseModel):
+    job_id: str
+    status: str
+    result: dict |None=None
 
-research = generate_research(TOPIC)
+@app.post("/generate", response_model=JobStatus)
+async def generate_content(request: PipelineRequest, background_tasks: BackgroundTasks):
+    job_id = str(uuid.uuid4())
+    jobs[job_id]= {"status": "pending", "result": None}
 
-print("\nGenerating script...")
+    background_tasks.add_task(run_job, job_id, request.niche)
+    return JobStatus(job_id = job_id, status="pending")
 
-script = generate_script(TOPIC)
+def run_job(job_id: str, niche: str):
+    try:
+        jobs[job_id]["status"]= "running"
+        result = run_pipeline(niche=niche, thread_id = job_id)
+        jobs[job_id]["status"]= "completed"
+        jobs[job_id]["result"]= result
+    except Exception as e:
+        jobs[job_id]["status"]= "failed"
+        jobs[job_id]["result"]= {"error": str(e)}
 
-print("\nSCRIPT:\n")
-print(script)
+@app.get("/status/{job_id}", response_model=JobStatus)
+async def get_status(job_id:str):
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job = jobs[job_id]
+    return JobStatus(job_id=job_id, status=job["status"], result=job["result"])
 
-print("\nGenerating voice...")
-audio_path = generate_voice(script)
-
-print("\nFetching stock video...")
-video_path = fetch_video("artificial intelligence")
-
-print("\nCreating reel...")
-final_path = create_reel(video_path, audio_path)
-
-print(f"\nDone! Reel saved to: {final_path}")
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}

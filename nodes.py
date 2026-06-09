@@ -8,8 +8,13 @@ import time
 import requests
 import json
 from dotenv import load_dotenv
+from prompts import get_trend_researcher_prompt
 load_dotenv()
 client = Groq()
+
+audio_outputs = "output/audio"
+os.makedirs(audio_outputs, exist_ok=True)
+
 
 def trend_researcher_node(state:ContentState)-> ContentState:
     """find one trending topic for the niche"""
@@ -35,29 +40,19 @@ def trend_researcher_node(state:ContentState)-> ContentState:
 
         trends = data.get("trending_searches", [])
         trend_titles = [t.get("query", "") for t in trends[:10]]
+        print(f"[Trend Researcher] Got trends: {trend_titles}")
 
-        fitness_keywords = ["workout", "fitness", "health", "exercise", "diet", "nutrition", "yoga", "gym"]
-        sports_events = ["open", "championship", "tournament", "league", "cup", "grand prix"]
-
-        filtered_titles = [
-            t for t in trend_titles 
-            if not any(event in t.lower() for event in sports_events)
-        ]
+        formatted_prompt = get_trend_researcher_prompt(
+            niche=state["niche"],
+            filtered_titles= trend_titles,
+            feedback=state.get("feedback", "")
+        )
 
         response = client.chat.completions.create(
             model = "llama-3.3-70b-versatile",
             messages=[{
                 "role": "user",
-                "content": f"""From these trending topics: {filtered_titles}
-                    Pick the ONE most relevant to {state['niche']} content.
-                    IMPORTANT: Only pick from the list if it is directly relevant to {state['niche']}.
-                    If none are clearly about {state['niche']}, ignore the list entirely and suggest 
-                    a genuinely popular {state['niche']} topic from your knowledge instead.
-                    {feedback}
-                    Respond in JSON only. The 'topic' field must contain ONLY the topic name, 
-                    no explanations, no prefixes like 'suggesting' or 'none from the list'.
-                    Just the clean topic string.
-                    {{"topic": "chosen topic", "reason": "why this works for the niche", "source": "trending_list or llm_knowledge"}}"""
+                "content": formatted_prompt
             }],
             response_format={"type": "json_object"}
         )
@@ -135,7 +130,8 @@ def voiceover_node(state: ContentState) -> ContentState:
     print(f"\n[Voiceover] Generating audio for script...")
     try:
         tts= gTTS(text= state['script'], lang='en', slow=False) 
-        audio_path = f"audio_{state['topic'].replace(' ', '_')}.mp3"
+        file_name = f"audio_{state['topic'].replace(' ', '_')}.mp3"
+        audio_path = os.path.join(audio_outputs, file_name)
         tts.save(audio_path)
         print(f"[Voiceover] Saved to {audio_path}")
 

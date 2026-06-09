@@ -3,6 +3,7 @@ from nodes import trend_researcher_node, script_writer_node, human_approval_node
 from langgraph.checkpoint.sqlite import SqliteSaver
 from state import ContentState
 from typing import Literal
+import sqlite3
 
 def should_publish(state: ContentState) -> Literal["publisher", "script_writer", "trend_researcher"]:
     """Edge condition: approved → publish, rejected → rewrite"""
@@ -32,22 +33,26 @@ graph.add_conditional_edges("human_approval", should_publish,{
     })
 graph.add_edge("publisher", END)
 
-with SqliteSaver.from_conn_string("content_factory.db") as memory:
-    app = graph.compile(checkpointer=memory)
+conn = sqlite3.connect("content_factory.db", check_same_thread=False)
+memory = SqliteSaver(conn)
+app= graph.compile(checkpointer=memory)
 
-    config = {"configurable": {"thread_id": "run_004"}}
-    
-    print("Starting agent...")
+def run_pipeline(niche: str, thread_id: str)-> dict:
+
+    config = {"configurable": {"thread_id": thread_id}}
+
     result = app.invoke({
-        "niche": "fitness",
+        "niche": niche,
         "topic": "",
         "trend_reason": "",
+        "reject_topic": False,
+        "topic_rejection_reason": "",
         "script": "",
         "hook": "",
+        "audio_path": "",
         "human_approved": False,
         "rejection_reason": "",
         "iteration_count": 0
     }, config=config)
     
-    print("\nGraph paused! Current state:")
-    print(result)
+    return result

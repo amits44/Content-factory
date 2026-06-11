@@ -9,6 +9,7 @@ import requests
 import json
 from dotenv import load_dotenv
 from prompts import get_trend_researcher_prompt
+from pipeline_state import pipeline_paused_jobs, pipeline_decisions
 load_dotenv()
 client = Groq()
 
@@ -152,27 +153,35 @@ def voiceover_node(state: ContentState) -> ContentState:
 def human_approval_node(state: ContentState) -> ContentState:
     """Pauses for human review"""
     print(f"\n[Human Approval] Reviewing script for topic: {state['topic']}")
-    print(f"Hook: {state['hook']}")
-    print(f"Script: {state['script']}")
+    
+    job_id = state.get("job_id","unknown")
 
-    approval = input("\nApprove? (y/n/t — t to reject topic entirely): ").strip().lower()
-    if approval == "y":
+    pipeline_paused_jobs[job_id]={
+        "status": "waiting for approval",
+        "topic": state["topic"],
+        "hook": state["hook"],
+        "script": state["script"]
+    }
+    while job_id not in pipeline_decisions:
+        time.sleep(1)
+    decision = pipeline_decisions.pop(job_id)
+    pipeline_paused_jobs.pop(job_id, None) 
+
+    if decision["action"] == "approve":
         return{
             "human_approved": True,
             "iteration_count": state["iteration_count"] + 1
         }
-    elif approval == "t":
-        reason = input("What's wrong with the topic? ").strip()
+    elif decision["action"] == "reject":
         return {
             "human_approved": False,
             "reject_topic": True,
-            "topic_rejection_reason": reason
+            "topic_rejection_reason": decision["reason"]
         }
     else:
-        reason = input("Why rejected? ").strip()
         return {
             "human_approved": False,
-            "rejection_reason": reason,
+            "rejection_reason": decision["reason"],
             "iteration_count": state["iteration_count"] + 1
         }
 

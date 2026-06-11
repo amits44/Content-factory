@@ -7,4 +7,4 @@ requests
 python-dotenv
 pydantic
 langchain-groq
-serpapi
+google-search-results

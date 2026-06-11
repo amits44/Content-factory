@@ -42,6 +42,7 @@ def run_pipeline(niche: str, thread_id: str)-> dict:
     config = {"configurable": {"thread_id": thread_id}}
 
     result = app.invoke({
+        "job_id": thread_id,
         "niche": niche,
         "topic": "",
         "trend_reason": "",

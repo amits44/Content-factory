@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END
-from nodes import trend_researcher_node, script_writer_node, human_approval_node, publisher_node, voiceover_node
+from app.nodes import trend_researcher_node, script_writer_node, human_approval_node, publisher_node, voiceover_node
 from langgraph.checkpoint.sqlite import SqliteSaver
-from state import ContentState
+from app.state import ContentState
 from typing import Literal
 import sqlite3
 

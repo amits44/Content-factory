@@ -1,5 +1,5 @@
 from typing import Literal
-from state import ContentState
+from app.state import ContentState
 import os
 from groq import Groq
 from gtts import gTTS
@@ -8,8 +8,8 @@ import time
 import requests
 import json
 from dotenv import load_dotenv
-from prompts import get_trend_researcher_prompt
-from pipeline_state import pipeline_paused_jobs, pipeline_decisions
+from app.prompts import get_trend_researcher_prompt
+from app.pipeline_state import pipeline_paused_jobs, pipeline_decisions
 load_dotenv()
 client = Groq()
 

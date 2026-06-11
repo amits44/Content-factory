@@ -2,8 +2,8 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 import uuid
 import json
-from graph import run_pipeline
-from pipeline_state import pipeline_paused_jobs, pipeline_decisions
+from app.graph import run_pipeline
+from app.pipeline_state import pipeline_paused_jobs, pipeline_decisions
 
 app = FastAPI(title="Content Factory API")
 

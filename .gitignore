@@ -62,7 +62,9 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-
+content_factory.db
+content_factory.db-shm
+content_factory.db-wal
 # Flask stuff:
 instance/
 .webassets-cache
@@ -218,3 +220,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+output/

@@ -3,9 +3,8 @@ from app.state import ContentState
 import os
 from groq import Groq
 from gtts import gTTS
-import pygame
-import time
 import requests
+import time
 import json
 from dotenv import load_dotenv
 from app.prompts import get_trend_researcher_prompt

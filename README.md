@@ -43,4 +43,4 @@ Visit `http://localhost:8000/docs` for the interactive API.
 
 ## Live API
 
-`https://your-render-url.onrender.com/docs`
+`https://content-factory-p77l.onrender.com`

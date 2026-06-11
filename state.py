@@ -2,7 +2,7 @@ from typing import TypedDict
 
 class ContentState(TypedDict):
     niche: str
-    
+    job_id : str
     topic: str
     tend_reason: str
     reject_topic: bool

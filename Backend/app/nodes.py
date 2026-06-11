@@ -136,14 +136,6 @@ def voiceover_node(state: ContentState) -> ContentState:
         tts.save(audio_path)
         print(f"[Voiceover] Saved to {audio_path}")
 
-        pygame.mixer.init()
-        pygame.mixer.music.load(audio_path)
-        pygame.mixer.music.play()
-
-        while pygame.mixer.music.get_busy():
-            time.sleep(0.5)
-        pygame.mixer.quit()
-        print(f"[Voiceover] Playback finished.")
         return {"audio_path": audio_path}
         
     except Exception as e:

@@ -2,7 +2,6 @@ fastapi
 uvicorn
 langgraph
 langgraph-checkpoint-sqlite
-groq
 gTTS
 requests
 python-dotenv

@@ -45,7 +45,7 @@ def trend_researcher_node(state:ContentState)-> ContentState:
         formatted_prompt = get_trend_researcher_prompt(
             niche=state["niche"],
             filtered_titles= trend_titles,
-            feedback=state.get("feedback", "")
+            feedback= feedback
         )
 
         response = client.chat.completions.create(

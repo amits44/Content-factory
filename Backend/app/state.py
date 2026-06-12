@@ -4,7 +4,7 @@ class ContentState(TypedDict):
     niche: str
     job_id : str
     topic: str
-    tend_reason: str
+    trend_reason: str
     reject_topic: bool
     topic_rejection_reason: str
     script: str

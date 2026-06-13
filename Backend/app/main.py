@@ -4,8 +4,21 @@ import uuid
 import json
 from app.graph import run_pipeline
 from app.pipeline_state import pipeline_paused_jobs, pipeline_decisions
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Content Factory API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "https://content-factory-p77l.onrender.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 jobs = {}
 

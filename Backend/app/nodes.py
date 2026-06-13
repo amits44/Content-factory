@@ -1,6 +1,7 @@
 from typing import Literal
 from app.state import ContentState
 import os
+import subprocess 
 from groq import Groq
 from gtts import gTTS
 import requests
@@ -12,8 +13,13 @@ from app.pipeline_state import pipeline_paused_jobs, pipeline_decisions
 load_dotenv()
 client = Groq()
 
-audio_outputs = "output/audio"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+audio_outputs = os.path.join(BASE_DIR, "output", "audio")
+image_outputs = os.path.join(BASE_DIR, "output", "images")
+video_outputs = os.path.join(BASE_DIR, "output", "videos")
 os.makedirs(audio_outputs, exist_ok=True)
+os.makedirs(image_outputs, exist_ok=True)
+os.makedirs(video_outputs, exist_ok=True)
 
 
 def trend_researcher_node(state:ContentState)-> ContentState:
@@ -141,6 +147,90 @@ def voiceover_node(state: ContentState) -> ContentState:
         print(f"[Voiceover] Failed: {e}")
         return {"audio_path": ""}
 
+def _fetch_topic_image(topic:str)-> str:
+    """Fetch relevant image for unsplash API"""
+    try:
+        api_key = os.getenv("PEXELS_API_KEY")
+        if not api_key:
+            return ""
+        response = requests.get(
+            "https://api.pexels.com/v1/search",
+            headers={"Authorization": api_key},
+            params={"query": topic, "per_page": 1, "orientation": "landscape"},
+            timeout=10
+        )
+        if response.status_code == 200:
+            photos = response.json().get("photos", [])
+            if photos:
+                image_url = photos[0]["src"]["large2x"]
+                img_response = requests.get(image_url, timeout=15)
+                if img_response.status_code == 200:
+                    image_path = os.path.join(image_outputs, f"{topic.replace(' ', '_')}.jpg")
+                    with open(image_path, "wb") as f:
+                        f.write(img_response.content)
+                    return image_path
+    except Exception as e:
+        print(f"[Video Generator] Image fetch error: {e}")
+    return ""
+
+def _create_fallback_image(topic:str)-> str:
+    """create black image with topic name"""
+    image_path = os.path.join(image_outputs, f"fallback_{topic.replace(' ', '_')}.png")
+    result = subprocess.run([
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", f"color=c=black:size=1280x720:rate=1",
+        "-vframes", "1",
+        "-update", "1",
+        image_path
+    ], capture_output=True)
+    if result.returncode != 0:
+        print(f"[Video Generator] ffmpeg fallback error: {result.stderr.decode()}")
+        return ""
+    return image_path
+
+def _combine_to_video(image_path:str, audio_path:str, topic:str)-> str:
+    """combine image+ audio into mp4 using ffmpeg"""
+    if not image_path or not os.path.exists(image_path):
+        print("[Video Generator] No valid image, skipping video creation")
+        return ""
+
+    video_path = os.path.join(video_outputs, f"{topic.replace(' ', '_')}.mp4")
+    result = subprocess.run([
+        "ffmpeg", "-y",
+        "-loop", "1",           
+        "-i", image_path,       
+        "-i", audio_path,       
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-c:v", "libx264",      
+        "-tune", "stillimage",  
+        "-c:a", "aac",          
+        "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-shortest",
+        video_path
+    ], capture_output=True, check=True)
+    if result.returncode != 0:
+        print(f"[Video Generator] combine error: {result.stderr.decode()[-200:]}")
+        return ""
+    return video_path
+
+def video_generator_node(state: ContentState)-> dict:
+    print(f"\n[Video Generator] Creating video for: {state['topic']}")
+
+    try:
+        image_path= _fetch_topic_image(state["topic"])
+        if not image_path:
+            print(f"[Video Generator] Image fetch failed, using fallback")
+            image_path= _create_fallback_image(state["topic"])
+
+        video_path = _combine_to_video(image_path, state["audio_path"], state["topic"])
+        print(f"[Video Generator] video saved to {video_path}")
+        return {"image_path": image_path, "video_path": video_path}
+    except Exception as e:
+        print(f"[Video Generator] Failed: {e}")
+        return {"image_path": "", "video_path": ""}
+
 def human_approval_node(state: ContentState) -> ContentState:
     """Pauses for human review"""
     print(f"\n[Human Approval] Reviewing script for topic: {state['topic']}")
@@ -151,7 +241,9 @@ def human_approval_node(state: ContentState) -> ContentState:
         "status": "waiting for approval",
         "topic": state["topic"],
         "hook": state["hook"],
-        "script": state["script"]
+        "script": state["script"],
+        "audio_path": state["audio_path"],
+        "video_path": state.get("video_path", "")
     }
     while job_id not in pipeline_decisions:
         time.sleep(1)

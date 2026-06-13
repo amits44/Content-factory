@@ -10,6 +10,8 @@ class ContentState(TypedDict):
     script: str
     hook: str
     audio_path: str
+    image_path: str
+    video_path: str
     human_approved: bool
     rejection_reason: str
     iteration_count: int
